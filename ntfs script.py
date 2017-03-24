@@ -99,8 +99,11 @@ def File_Name_Parse(entry,byte,res,next) :
    #adds offset and 64 bytes to find length of name.
    byte += offset + 64
    nameLen = int(MFTentryList[entry][byte],16)
-   print(MFTentryList[entry][byte+2:byte+nameLen])
-   
+   nameLen *= 2
+   name = MFTentryList[entry][byte+2:byte+nameLen]
+   #will join all hex values and convert to ascii
+   #***WE MUST STILL CHECK WHAT THE CHARACTER ENCODING IS***
+   print(bytearray.fromhex(''.join(name)).decode())
    Attribute_head_Parse(next)
 
 #Byte range is 16-17 for example but in python you do 16:18 but it only read 16 and 18.

@@ -78,7 +78,6 @@ def Endian(bytes):
    else :
       bytes = ''.join(bytes)
       return bytes
-   
 
 def Standard_Info_Parse(entry,byte,res,next) :
    if res == '00' :
@@ -95,6 +94,7 @@ def Standard_Info_Parse(entry,byte,res,next) :
    else:
       print("Non-Resident")
 
+
 def File_Name_Parse(entry,byte,res,next) :
    if res == '00' :
       off = MFTentryList[entry][byte+20:byte+22]
@@ -104,62 +104,125 @@ def File_Name_Parse(entry,byte,res,next) :
    #adds offset and 64 bytes(lower) to find length of name.
    byte += int(offset,16)
    Size = int(MFTentryList[entry][byte],16)
-
+   global name
    byte += 64
    nameLen = int(MFTentryList[entry][byte],16)
    nameLen *= 2
    name = MFTentryList[entry][byte+2:byte+nameLen+2]
    #will join all hex values and convert to ascii
    #***WE MUST STILL CHECK WHAT THE CHARACTER ENCODING IS***
-   print("     File Name:",bytearray.fromhex(''.join(name)).decode('utf-16'))
-    
+   print("     File Name:",bytearray.fromhex(''.join(name)).decode('utf-16')) 
    Attribute_head_Parse(next)
+
+def Data_Parser(entry,byte,res,nextAttr,aLen):
+   #PAGE 258!!#
+   if bytearray.fromhex(''.join(name)).decode('utf-16') == "$BadClus":
+      pass
+   else:
+      if res == '00' :
+         ContentSize = MFTentryList[entry][byte+16:byte+20]
+         off = MFTentryList[entry][byte+20:byte+22]
+         offset = Endian(off)
+         byte += int(offset,16)
+         print(ContentSize)
+         #off = MFTentryList[entry][byte:byte+8]
+         #print(Endian(off))
+         #print(off)
+      else:
+         print("  Non-Resident")
+         #StartVCN = MFTentryList[entry][byte+16:byte+24]
+         EndVCN = MFTentryList[entry][byte+24:byte+32]
+         RunOffSet = MFTentryList[entry][byte+32:byte+34] 
+         AllocSize = MFTentryList[entry][byte+40:byte+48]
+         #ActualSize = MFTentryList[entry][byte+48:byte+56]
+         byte += int(Endian(RunOffSet),16)
+         
+         scale = 16
+         num_of_bits = 8
+         Binary = bin(int(MFTentryList[entry][byte], scale))[2:].zfill(num_of_bits)
+         BinList = list()
+         for i in Binary :
+            BinList.append(i)
+         CountOff= int(''.join(BinList[0:4]),2)
+         CountLen = int(''.join(BinList[4:8]),2)
+
+         print("   Byte offset to file",int(Endian(RunOffSet),16),"\n   Count Length bytes: "+str(CountLen)+"\n   Count Offset bytes: "+str(CountOff))
+
+         #byte += 1
+         #CountOff += byte
+         #RunLen = int(Endian(MFTentryList[entry][byte:byte+CountLen]),16)
+         #RunOff = int(Endian(MFTentryList[entry][byte+CountLen:CountOff+1]),16)
+         #print(Endian(MFTentryList[entry][byte+CountLen:CountOff+1]))
+         
+         #print("  File starts at Cluster: "+str(RunOff))
+         #print("  Cluster Length: "+str(RunLen))
+      #print(int(Endian(EndVCN),16))
+
+      #off = MFTentryList[entry][byte:byte+8]
+      #print(Endian(off))
+   Attribute_head_Parse(nextAttr)
 
 #Byte range is 16-17 for example but in python you do 16:18 but it only read 16 and 18.
 #Parses the attribute head and passes to Attribute parser.
 def Attribute_head_Parse(byte) :
-      #attribute 1 value
-      Av = MFTentryList[entry][byte:byte+4]
-      aID = int(Endian(Av),16)
-      Av = MFTentryList[entry][byte+4:byte+8]
-      aLen = int(Endian(Av),16)
-      nextAttr = byte + aLen
-      res = MFTentryList[entry][byte+8]
+   #attribute 1 value
+   res = MFTentryList[entry][byte+8]
+   #if res == '00' :
+      #Aid = MFTentryList[entry][byte:byte+4]
+   aID = int(Endian(MFTentryList[entry][byte:byte+4]),16)
+      #Av = MFTentryList[entry][byte+4:byte+8]
+   aLen = int(Endian(MFTentryList[entry][byte+4:byte+8]),16)
+   nextAttr = byte + aLen
+   #else :
+   #   Aid = MFTentryList[entry][byte:byte+4]
+   #   aID = int(Endian(Aid),16)
+   #   Av = MFTentryList[entry][byte+4:byte+8]
+   #   aLen = int(Endian(Av),16)
+   #   nextAttr = byte + aLen
+   #   StartVCN = MFTentryList[entry][byte+16:byte+24]
+    
+   #   num = Endian(StartVCN)
+   #   print(int(num,16))
+      #Atype = AttribType[str(aID)]
+   if str(aID) in AttribType:
       Atype = AttribType[str(aID)]
       print(Atype)
-      
-      if aID == 16 :
-         Standard_Info_Parse(entry,byte,res,nextAttr)
-      elif aID == 32:
-         print("Attriblist")
-      elif aID == 48:
-         File_Name_Parse(entry,byte,res,nextAttr)
-      elif aID == 64:
-         print("    Not Configured")
-      elif aID == 80:
-         print("    Not Configured")
-      elif aID == 96:
-         print("    Not Configured")
-      elif aID == 112:
-         print("    Not Configured")
-      elif aID == 128:
-         print("    Not Configured")
-      elif aID == 144:
-         print("    Not Configured")
-      elif aID == 160:
-         print("    Not Configured")
-      elif aID == 176:
-         print("    Not Configured")
-      elif aID == 192:
-         print("    Not Configured")
-      elif aID == 208:
-         print("    Not Configured")
-      elif aID == 224:
-         print("    Not Configured")
-      elif aID == 256:
-         print("    Not Configured")
-      else:
-         print("Value Invalid")
+   else:
+      None
+
+   if aID == 16 :
+      Standard_Info_Parse(entry,byte,res,nextAttr)
+   elif aID == 32:
+      print("Attriblist")
+   elif aID == 48:
+      File_Name_Parse(entry,byte,res,nextAttr)
+   elif aID == 64:
+      print("    Not Configured")
+   elif aID == 80:
+      print("    Not Configured")
+   elif aID == 96:
+      print("    Not Configured")
+   elif aID == 112:
+      print("    Not Configured")
+   elif aID == 128:
+      #print("    Not Configured")
+      Data_Parser(entry,byte,res,nextAttr,aLen)
+   elif aID == 144:
+      print("    Not Configured")
+   elif aID == 160:
+      print("    Not Configured")
+   elif aID == 176:
+      print("    Not Configured")
+   elif aID == 192:
+      print("    Not Configured")
+   elif aID == 208:
+      print("    Not Configured")
+   elif aID == 224:
+      print("    Not Configured")
+   elif aID == 256:
+      print("    Not Configured")
+   else:
+      print("Value Invalid")
 
 def MFT_Parser(entry) :  
    #print("Sequence Value = ",MFTentryList[entry][16:18])
@@ -179,5 +242,3 @@ FoundEntries = len(MFTentryList)
 for entry in range(0,FoundEntries) :
    MFT_Parser(entry)
    print('\n\n')
-
-

@@ -65,45 +65,54 @@ AttribType = {'16':'$STANDARD_INFORMATION','32':'$ATTRIBUTE_LIST','48':'$FILE_NA
 
 Flags = {'00000001':'Read Only','00000002':'Hidden','00000004':'System','00000020':'Archive','00000040':'Device','00000080':'#Normal', '00000100':'Temporary','00000200':'Sparse file','00000400':'Reparse point','00000800':'Compressed','00001000':'Offline','00002000': 'Content is not being indexed for faster searches','00004000':'Encrypted'}
 
+class Attributes:
+   def __init__(self,name):
+      self.name = name
+
+def Endian(bytes):
+   if (LittleE):
+      LE_val = str()
+      bytes = bytes[::-1]
+      bytes = ''.join(bytes)
+      return bytes
+   else :
+      bytes = ''.join(bytes)
+      return bytes
+   
+
 def Standard_Info_Parse(entry,byte,res,next) :
    if res == '00' :
       off = MFTentryList[entry][byte+20:byte+22]
-      if (LittleE):
-         offset = int(off[1]+off[0],16)
+      offset = Endian(off)
+      byte += int(offset,16)
+      Av = MFTentryList[entry][byte+32:byte+36]
+      flag = Endian(Av)
+      if flag not in Flags :
+         print("Invalid Flag")
       else:
-         offset = int(off[0]+off[1],16)
+         print("     Flag Value:", Flags[flag])
+      Attribute_head_Parse(next)
    else:
       print("Non-Resident")
-
-   byte += offset
-   Av = MFTentryList[entry][byte+32:byte+36]
-   if (LittleE):
-      flag = Av[3]+Av[2]+Av[1]+Av[0]
-   else:
-      flag = Av[0]+Av[1]+Av[2]+Av[3]
-   if flag not in Flags :
-      print(flag)
-   else:
-      print(Flags[flag])
-   Attribute_head_Parse(next)
 
 def File_Name_Parse(entry,byte,res,next) :
    if res == '00' :
       off = MFTentryList[entry][byte+20:byte+22]
-      if (LittleE):
-         offset = int(off[1]+off[0],16)
-      else:
-         offset = int(off[0]+off[1],16)
+      offset = Endian(off)
    else:
       print("Non-Resident")
-   #adds offset and 64 bytes to find length of name.
-   byte += offset + 64
+   #adds offset and 64 bytes(lower) to find length of name.
+   byte += int(offset,16)
+   Size = int(MFTentryList[entry][byte],16)
+
+   byte += 64
    nameLen = int(MFTentryList[entry][byte],16)
    nameLen *= 2
-   name = MFTentryList[entry][byte+2:byte+nameLen]
+   name = MFTentryList[entry][byte+2:byte+nameLen+2]
    #will join all hex values and convert to ascii
    #***WE MUST STILL CHECK WHAT THE CHARACTER ENCODING IS***
-   print(bytearray.fromhex(''.join(name)).decode())
+   print("     File Name:",bytearray.fromhex(''.join(name)).decode('utf-16'))
+    
    Attribute_head_Parse(next)
 
 #Byte range is 16-17 for example but in python you do 16:18 but it only read 16 and 18.
@@ -111,50 +120,44 @@ def File_Name_Parse(entry,byte,res,next) :
 def Attribute_head_Parse(byte) :
       #attribute 1 value
       Av = MFTentryList[entry][byte:byte+4]
-      if (LittleE):
-         aID = int(Av[3]+Av[2]+Av[1]+Av[0],16)
-      else:
-         aID = int(Av[0]+Av[1]+Av[2]+Av[3],16)
+      aID = int(Endian(Av),16)
       Av = MFTentryList[entry][byte+4:byte+8]
-      if (LittleE):
-         aLen = int(Av[3]+Av[2]+Av[1]+Av[0],16)
-      else:
-         aLen = int(Av[0]+Av[1]+Av[2]+Av[3],16)
+      aLen = int(Endian(Av),16)
       nextAttr = byte + aLen
       res = MFTentryList[entry][byte+8]
       Atype = AttribType[str(aID)]
-      print("Attribute Type: " + Atype)
+      print(Atype)
       
       if aID == 16 :
          Standard_Info_Parse(entry,byte,res,nextAttr)
       elif aID == 32:
-         print("bless1")
+         print("Attriblist")
       elif aID == 48:
          File_Name_Parse(entry,byte,res,nextAttr)
       elif aID == 64:
-         print("bless3")
+         print("    Not Configured")
       elif aID == 80:
-         print("bless4")
+         print("    Not Configured")
       elif aID == 96:
-         print("bless5")
+         print("    Not Configured")
       elif aID == 112:
-         print("bless6")
+         print("    Not Configured")
       elif aID == 128:
-         print("bless7")
+         print("    Not Configured")
       elif aID == 144:
-         print("bless8")
+         print("    Not Configured")
       elif aID == 160:
-         print("bless9")
+         print("    Not Configured")
       elif aID == 176:
-         print("bless10")
+         print("    Not Configured")
       elif aID == 192:
-         print("bless11")
+         print("    Not Configured")
       elif aID == 208:
-         print("bless12")
+         print("    Not Configured")
       elif aID == 224:
-         print("bless13")
+         print("    Not Configured")
       elif aID == 256:
-         print("bless14")
+         print("    Not Configured")
       else:
          print("Value Invalid")
 
@@ -168,10 +171,13 @@ def MFT_Parser(entry) :
       B1a = int(MFTentryList[entry][20] + MFTentryList[entry][21],16)
    Attribute_head_Parse(B1a) 
 
+def printer() :
+   print(str(getattr(Attributes, "Entry"))+".")
+   print("File Name:",getattr(Attributes, "F_Name"),'\n')
 
 FoundEntries = len(MFTentryList)
 for entry in range(0,FoundEntries) :
    MFT_Parser(entry)
-
+   print('\n\n')
 
 
